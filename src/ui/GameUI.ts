@@ -21,6 +21,10 @@ export interface UIData {
 }
 
 type Category = ItemDefinition['category'] | 'all';
+// The final quest starts on receiving the glider; completion requires leaving the plateau.
+const questPresentation = (s: GameState, id: string = s.quest) => s.flags.prologueComplete === true && id === 'PROLOGUE_COMPLETE'
+  ? { title: '序章完成 · 自由探索', text: '你已乘风离开台地。现在可以返回台地，自由探索。', target: '' }
+  : QUESTS[id];
 const CATEGORIES: [Category, string][] = [['all', '全部'], ['weapon', '兵器'], ['bow', '弓'], ['shield', '盾'], ['arrow', '箭矢'], ['clothes', '衣装'], ['material', '素材'], ['meal', '料理'], ['key', '珍藏']];
 const WEATHER = { clear: '晴', cloudy: '阴', rain: '雨' };
 const MOVEMENT: Record<string, string> = { idle: '驻足', run: '行走', sprint: '疾跑', crouch: '潜行', jump: '跃起', fall: '下落', climb: '攀爬', swim: '游泳', glide: '滑翔', dead: '倒下' };
@@ -187,10 +191,10 @@ export class GameUI {
     this.get('stamina').classList.toggle('exhausted', stamina < .18);
     this.show('stamina', stamina < .995 || ['climb', 'swim', 'glide', 'sprint'].includes(s.player.movement));
     this.text('stamina-label', `${Math.round(stamina * 100)}`);
-    const quest = QUESTS[s.quest];
+    const quest = questPresentation(s);
     this.text('quest-title', quest?.title ?? '自由探索');
     this.text('quest-text', quest?.text ?? '沿着风，寻找属于你的方向。');
-    this.text('quest-counter', s.quest === 'COMPLETE_FOUR_TRIALS' ? `${s.completed.length} / 4 道星光` : '主线 · 序章');
+    this.text('quest-counter', s.flags.prologueComplete === true ? '主线 · 序章已完成' : s.quest === 'COMPLETE_FOUR_TRIALS' ? `${s.completed.length} / 4 道星光` : '主线 · 序章');
     const degrees = ((-s.player.yaw * 180 / Math.PI) % 360 + 360) % 360;
     this.text('bearing', `${String(Math.round(degrees) % 360).padStart(3, '0')}°`);
     this.get('compass-needle').style.transform = `rotate(${degrees}deg)`;
@@ -367,8 +371,10 @@ export class GameUI {
     this.get('map-svg').classList.toggle('charted', s.tower);
     this.text('map-status', s.tower ? '区域地形已同步' : '信号微弱 · 激活观星之塔以下载地形');
     this.text('map-coordinates', `X ${Math.round(s.player.position[0])}  Z ${Math.round(s.player.position[2])}  /  海拔 ${Math.round(s.player.position[1])} m`);
-    this.text('map-quest-title', QUESTS[s.quest]?.title ?? '自由探索');
-    this.text('map-quest-text', QUESTS[s.quest]?.text ?? '');
+    const quest = questPresentation(s);
+    this.text('map-quest-status', s.flags.prologueComplete === true ? '自由探索' : '正在追寻');
+    this.text('map-quest-title', quest?.title ?? '自由探索');
+    this.text('map-quest-text', quest?.text ?? '');
     this.text('map-cores', `${s.completed.length} / 4`);
     this.get('map-player').setAttribute('transform', `translate(${clamp(s.player.position[0], -CONFIG.radius, CONFIG.radius)} ${clamp(s.player.position[2], -CONFIG.radius, CONFIG.radius)}) rotate(${-s.player.yaw * 180 / Math.PI})`);
     this.get('map-player').style.opacity = s.region === 'overworld' ? '1' : '.4';
@@ -390,12 +396,16 @@ export class GameUI {
   }
 
   private renderQuests(s: GameState): void {
-    const signature = `${s.quest}:${s.completed.join(',')}:${s.terminal}`;
+    const signature = `${s.quest}:${s.completed.join(',')}:${s.terminal}:${s.flags.prologueComplete}`;
     if (this.questSignature === signature) return;
     this.questSignature = signature;
     const entries = Object.entries(QUESTS);
     const current = entries.findIndex(([id]) => id === s.quest);
-    this.get('quest-log').innerHTML = !s.terminal ? '<div class="locked-message"><h3>星盘尚未唤醒</h3><p>靠近石台上的发光终端，按 E 取得星盘。</p></div>' : entries.slice(0, current + 1).reverse().map(([id, quest]) => `<article class="journal-entry ${id === s.quest ? 'current' : ''}"><span class="eyebrow">${id === s.quest ? '正在追寻' : '已留下的足迹'}</span><h3>${esc(quest.title)}</h3><p>${esc(quest.text)}</p>${id === s.quest ? button('查看地图', 'panel', 'data-value="map"', 'subtle') : '<span class="journal-done">已完成</span>'}</article>`).join('');
+    this.get('quest-log').innerHTML = !s.terminal ? '<div class="locked-message"><h3>星盘尚未唤醒</h3><p>靠近石台上的发光终端，按 E 取得星盘。</p></div>' : entries.slice(0, current + 1).reverse().map(([id]) => {
+      const quest = questPresentation(s, id);
+      const active = id === s.quest && s.flags.prologueComplete !== true;
+      return `<article class="journal-entry ${active ? 'current' : ''}"><span class="eyebrow">${active ? '正在追寻' : '已留下的足迹'}</span><h3>${esc(quest.title)}</h3><p>${esc(quest.text)}</p>${active ? button('查看地图', 'panel', 'data-value="map"', 'subtle') : '<span class="journal-done">已完成</span>'}</article>`;
+    }).join('');
   }
 
   private renderSettings(settings: Settings): void {
@@ -611,7 +621,7 @@ export class GameUI {
       </section>
       <section class="game-panel inventory-panel" data-panel="inventory" hidden>${heading('THE THINGS WE CARRY', '旅人的行囊')}<div data-ref="inventory-host"><div class="inventory-surface" data-ref="inventory-surface"><div class="inventory-toolbar"><div class="category-tabs" data-ref="category-tabs" role="tablist" aria-label="物品分类">${CATEGORIES.map(([id, label]) => button(label, 'category', `role="tab" data-category="${id}"`)).join('')}</div><select data-sort aria-label="物品排序"><option value="category">按种类</option><option value="name">按名称</option><option value="power">按强度</option></select></div><div class="inventory-columns"><div class="inventory-list"><div class="inventory-count" data-ref="inventory-count"></div><div class="item-grid" data-ref="item-grid"></div><p class="empty-inventory" data-ref="empty-inventory">这里还没有物品。<br><small>原野总会给细心的旅人一点馈赠。</small></p></div><aside class="item-detail" data-ref="item-detail"></aside></div><div class="held-tray"><div class="held-label"><strong>手持素材</strong><small data-ref="held-count"></small></div><div class="held-items" data-ref="held-items"></div><div class="cook-control">${button('投入烹饪 <span>→</span>', 'cook', 'data-ref="cook"', 'primary')}<small data-ref="cook-hint"></small></div></div></div></div></section>
       <section class="game-panel inventory-panel" data-panel="cooking" hidden>${heading('A LITTLE WARMTH', '营火料理')}<div data-ref="cooking-host"></div></section>
-      <section class="game-panel map-panel" data-panel="map" hidden>${heading('ATLAS / THE ASTER PLATEAU', '星盘舆图')}<div class="locked-message" data-ref="map-locked">${icon('key')}<span class="eyebrow">NO SIGNAL</span><h3>星盘尚未唤醒</h3><p>在回声密室中取得星盘，方可记录这片大地。</p></div><div class="map-content" data-ref="map-content"><div class="map-sheet"><div class="map-paper-heading"><span>星坠台地</span><small data-ref="map-status"></small></div>${this.mapSvg()}<div class="map-fog-label" data-ref="map-fog">未知的原野<small>等待来自观星之塔的回声</small></div><div class="map-paper-footer"><small data-ref="map-coordinates"></small><small>点击台地放置标记</small></div></div><aside class="map-sidebar"><span class="eyebrow">正在追寻</span><h3 data-ref="map-quest-title"></h3><p data-ref="map-quest-text"></p><div class="map-core-count"><strong data-ref="map-cores"></strong><span>道星光</span></div><ul class="trial-list" data-ref="trial-list"></ul><div class="map-legend"><span><i class="legend-player"></i> 当前位置</span><span>◇ 试炼遗迹</span><span>⚑ 旅人标记</span></div><p class="map-footnote">尚未发现的地点不会留下痕迹。<br>每一次探索，都让世界更清晰。</p></aside></div></section>
+      <section class="game-panel map-panel" data-panel="map" hidden>${heading('ATLAS / THE ASTER PLATEAU', '星盘舆图')}<div class="locked-message" data-ref="map-locked">${icon('key')}<span class="eyebrow">NO SIGNAL</span><h3>星盘尚未唤醒</h3><p>在回声密室中取得星盘，方可记录这片大地。</p></div><div class="map-content" data-ref="map-content"><div class="map-sheet"><div class="map-paper-heading"><span>星坠台地</span><small data-ref="map-status"></small></div>${this.mapSvg()}<div class="map-fog-label" data-ref="map-fog">未知的原野<small>等待来自观星之塔的回声</small></div><div class="map-paper-footer"><small data-ref="map-coordinates"></small><small>点击台地放置标记</small></div></div><aside class="map-sidebar"><span class="eyebrow" data-ref="map-quest-status">正在追寻</span><h3 data-ref="map-quest-title"></h3><p data-ref="map-quest-text"></p><div class="map-core-count"><strong data-ref="map-cores"></strong><span>道星光</span></div><ul class="trial-list" data-ref="trial-list"></ul><div class="map-legend"><span><i class="legend-player"></i> 当前位置</span><span>◇ 试炼遗迹</span><span>⚑ 旅人标记</span></div><p class="map-footnote">尚未发现的地点不会留下痕迹。<br>每一次探索，都让世界更清晰。</p></aside></div></section>
       <section class="game-panel journal-panel" data-panel="quests" hidden>${heading('TRACES OF FIRST LIGHT', '星光纪事')}<div class="quest-log" data-ref="quest-log"></div></section>
       <section class="game-panel settings-panel" data-panel="settings" hidden><div class="panel-heading"><div><span class="eyebrow">MAKE THE JOURNEY YOURS</span><h2 tabindex="-1" data-heading>旅途设置</h2></div>${button('返回 <span>↗</span>', 'settings-back', '', 'close-button')}</div><div class="settings-form" data-ref="settings-form"><div class="settings-column"><h3>画面与操控</h3><label class="setting-row"><span>画面质量<small>低配设备可选择「流畅」</small></span><select data-setting="quality" aria-label="画面质量"><option value="low">流畅</option><option value="medium">均衡</option><option value="high">精致</option></select></label>${range('sensitivity', '视角灵敏度', .25, 2, .05)}${toggle('shake', '镜头震动', '关闭以获得更平稳的镜头')}${toggle('subtitles', '演出字幕', '对话选项始终显示')}${toggle('colorblind', '高辨识配色', '以颜色及形状共同区分状态')}</div><div class="settings-column"><h3>旷野之声</h3>${range('volume', '主音量')}${range('music', '音乐')}${range('ambient', '环境')}${range('sfx', '音效')}<p class="settings-note">声音由实时合成生成。第一次交互后启用音频。<br>设置将随旅途保存。</p></div></div><div class="settings-bottom"><span>键鼠游玩 · 建议佩戴耳机</span>${button('查看完整操作', 'help', '', 'subtle')}</div></section>
       <section class="pause-panel" data-panel="pause" hidden><div class="pause-main"><span class="eyebrow">A MOMENT BETWEEN ADVENTURES</span><h2 tabindex="-1" data-heading>风，稍作停留。</h2><p>路途很长。不必急于抵达。</p><nav>${button('继续旅程 <span>→</span>', 'panel', 'data-value="none"', 'primary')}${button('旅人的行囊', 'panel', 'data-value="inventory"')}${button('星盘舆图', 'panel', 'data-value="map"')}${button('星光纪事', 'panel', 'data-value="quests"')}${button('旅途设置', 'panel', 'data-value="settings"')}${button('记录旅途', 'save', 'data-ref="save"')}${button('返回标题', 'panel', 'data-value="title"', 'subtle')}</nav><small data-ref="save-hint"></small></div><div class="pause-guide"><span class="eyebrow">FIELD NOTES / 操作指南</span>${keyGuide}</div></section>
