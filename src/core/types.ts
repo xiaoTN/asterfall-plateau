@@ -22,11 +22,12 @@ export interface GameState {
 }
 export interface Collider { id: string; box: THREE.Box3; climbable: boolean; enabled: boolean; mesh?: THREE.Object3D; }
 export interface Interactable { id: string; kind: 'terminal'|'door'|'exit'|'elder'|'tower'|'shrine'|'altar'|'glider'|'chest'|'pickup'|'tree'|'pot'|'campfire'|'ability'|'reward'|'return'; name: string; position: THREE.Vector3; radius: number; item?: string; ability?: AbilityId; mesh?: THREE.Object3D; data?: Record<string, string|number|boolean>; }
-export interface AbilityTarget { id: string; kind: 'metal'|'cracked'|'orb'|'rotor'|'water'|'gate'|'barrel'; position: THREE.Vector3; mesh: THREE.Object3D; collider?: Collider; stage?: number; solved?: boolean; frozen?: number; charge?: number; velocity?: THREE.Vector3; origin?: Vec3; }
-export interface WaterArea { minX: number; maxX: number; minZ: number; maxZ: number; level: number; depth: number; }
+export interface AbilityTarget { id: string; kind: 'metal'|'cracked'|'orb'|'rotor'|'water'|'gate'|'barrel'; position: THREE.Vector3; mesh: THREE.Object3D; collider?: Collider; stage?: number; solved?: boolean; frozen?: number; charge?: number; velocity?: THREE.Vector3; origin?: Vec3; resource?: 'log'|'apple'; attached?: boolean; }
+export interface WaterArea { minX: number; maxX: number; minZ: number; maxZ: number; level: number; depth: number; current?: Vec3; }
+export interface WaterfallArea { minX: number; maxX: number; minZ: number; maxZ: number; minY: number; maxY: number; axis: 'x'|'z'; }
 export interface EnemySpawn { id: string; type: 'melee'|'shield'|'archer'|'guardian'; position: Vec3; camp: string; }
 export interface WorldView {
-  root: THREE.Group; colliders: Collider[]; interactables: Interactable[]; targets: AbilityTarget[]; waters: WaterArea[]; spawns: EnemySpawn[];
+  root: THREE.Group; colliders: Collider[]; interactables: Interactable[]; targets: AbilityTarget[]; waters: WaterArea[]; waterfalls?: WaterfallArea[]; spawns: EnemySpawn[];
   heightAt(x: number, z: number): number;
   update(dt: number, state: GameState): void;
   dispose(): void;
