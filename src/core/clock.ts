@@ -12,6 +12,6 @@ export function applyBloodMoon(state:GameState,spawns:{id:string;position:Vec3}[
   state.lastBloodMoon=state.day;state.bloodMoonCount++;
   let reset=0;
   for(const spawn of spawns){if(Math.hypot(spawn.position[0]-player[0],spawn.position[2]-player[2])<28){state.flags['blood-pending:'+spawn.id]=true;}else{delete state.enemies[spawn.id];reset++;}}
-  for(const key of Object.keys(state.flags)){if(key.startsWith('picked:resource-')||key.startsWith('felled:')||key.startsWith('shaken:')||key.startsWith('apples:')) delete state.flags[key];}
+  for(const key of Object.keys(state.flags)){if(/^picked:(?:resource-|wild-|elder-|cabin-|snow-route-|orchard-|outlook-branch$|trail-)/.test(key)||key.startsWith('felled:')||key.startsWith('shaken:')||key.startsWith('apples:')) delete state.flags[key];}
   return reset;
 }
