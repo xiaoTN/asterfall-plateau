@@ -1,0 +1,18 @@
+import { describe, expect, it } from 'vitest';
+import { createState, migrateSave, SaveStore, SAVE_KEY, parseSettings } from '../src/core/state';
+import { advanceClock, applyBloodMoon } from '../src/core/clock';
+
+function storage(){const data=new Map<string,string>();return {getItem:(key:string)=>data.get(key)??null,setItem:(key:string,v:string)=>{data.set(key,v);},removeItem:(key:string)=>{data.delete(key);}};}
+describe('versioned persistence',()=>{
+  it('round-trips critical progress and durability',()=>{const s=createState();s.terminal=true;s.tower=true;s.completed=['bomb'];s.trialStages.bomb=3;s.cores=1;s.inventory=[{uid:'weapon-1',id:'sword',count:1,durability:3}];s.equipment.weapon='weapon-1';s.flags['opened:chamber-shirt']=true;s.enemies.a={hp:0,dead:true};s.pins=[{x:4,z:5}];const store=new SaveStore(storage());expect(store.save(s)).toBe(true);expect(store.load()).toEqual(s);});
+  it('recovers malformed JSON without crashing',()=>{const data=storage();data.setItem(SAVE_KEY,'{broken');const store=new SaveStore(data);expect(store.load()).toBeNull();expect(store.error).toContain('存档');store.save(createState());expect(store.load()).not.toBeNull();});
+  it('rejects malformed shapes and future versions',()=>{expect(()=>migrateSave({version:9})).toThrow();expect(()=>migrateSave({version:1,player:null,inventory:[]})).toThrow();});
+  it('clamps hostile values and invalid positions',()=>{const s=createState();const raw={...s,player:{...s.player,maxHp:-99,hp:1e20,position:[NaN,0,0]},pins:[{x:'x',z:0}],equipment:{weapon:'missing'},completed:['bomb','bomb'],cores:900};const loaded=migrateSave(raw);expect(loaded.player.maxHp).toBe(4);expect(loaded.player.hp).toBe(4);expect(loaded.player.position).toEqual(s.safePosition);expect(loaded.pins).toHaveLength(0);expect(loaded.cores).toBe(1);expect(loaded.equipment.weapon).toBeNull();});
+  it('treats storage quota failure as a visible nonfatal error',()=>{const store=new SaveStore({getItem:()=>null,setItem:()=>{throw Error('quota');},removeItem:()=>{}});expect(store.save(createState())).toBe(false);expect(store.error).toContain('存档未写入');});
+  it('validates settings at browser boundary',()=>{expect(parseSettings({volume:9,quality:'unsafe',sensitivity:-3}).volume).toBe(1);expect(parseSettings(null).quality).toBe('medium');});
+});
+describe('blood moon persistence',()=>{
+  it('resurrects distant enemies but preserves cores and main chests',()=>{const s=createState();s.day=3;s.completed=['ice'];s.cores=1;s.flags={'opened:story':true,'picked:resource-apple':true,'felled:tree-1':true};s.enemies={near:{hp:0,dead:true},far:{hp:0,dead:true}};applyBloodMoon(s,[{id:'near',position:[2,0,0]},{id:'far',position:[90,0,0]}],[0,0,0]);expect(s.enemies.far).toBeUndefined();expect(s.enemies.near.dead).toBe(true);expect(s.flags['blood-pending:near']).toBe(true);expect(s.flags['opened:story']).toBe(true);expect(s.flags['picked:resource-apple']).toBeUndefined();expect(s.completed).toEqual(['ice']);expect(s.cores).toBe(1);expect(s.lastBloodMoon).toBe(3);});
+  it('does not replay a loaded midnight blood moon',()=>{const s=createState();s.day=3;s.time=0;s.lastBloodMoon=3;expect(advanceClock(s,.1)).toBe(false);s.lastBloodMoon=0;expect(advanceClock(s,.1)).toBe(true);});
+  it('wraps day without large delta drift',()=>{const s=createState();s.day=2;s.time=23.9999;expect(advanceClock(s,.05)).toBe(true);expect(s.day).toBe(3);expect(s.time).toBeLessThan(0.001);});
+});
