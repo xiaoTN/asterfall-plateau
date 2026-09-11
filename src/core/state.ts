@@ -48,7 +48,7 @@ export function migrateSave(raw: unknown): GameState {
   s.cores=s.upgrade?0:s.completed.length;
   s.time=bounded(raw.time,7,0,23.99999);s.day=Math.floor(bounded(raw.day,1,1,100000));
   s.weather=raw.weather==='rain'||raw.weather==='cloudy'?raw.weather:'clear';
-  s.weatherSeed=bounded(raw.weatherSeed,7381,0,2147483647);s.lastBloodMoon=bounded(raw.lastBloodMoon,0,0,s.day);
+  s.weatherSeed=Math.floor(bounded(raw.weatherSeed,7381,0,0xffffffff));s.lastBloodMoon=bounded(raw.lastBloodMoon,0,0,s.day);
   s.bloodMoonCount=bounded(raw.bloodMoonCount,0,0,10000);s.playSeconds=bounded(raw.playSeconds,0,0,1e9);
   if(record(raw.enemies)) for(const [id,value] of Object.entries(raw.enemies)) {if(record(value)&&finite(value.hp)&&typeof value.dead==='boolean') s.enemies[id]={hp:Math.max(0,value.hp),dead:value.dead,...(vector(value.position)?{position:[...value.position] as Vec3}:{})};}
   s.pins=Array.isArray(raw.pins)?raw.pins.filter(record).filter(p=>finite(p.x)&&finite(p.z)&&Math.abs(p.x)<150&&Math.abs(p.z)<150).slice(0,8).map(p=>({x:p.x as number,z:p.z as number})):[];
