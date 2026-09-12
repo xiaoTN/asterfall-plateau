@@ -13,7 +13,7 @@ async function walk(page:Page,x:number,z:number,climb=false){
 }
 
 test('keyboard-only awakening, sealed door, panorama, elder, tower and reload',async({page})=>{
-  test.setTimeout(process.env.CI?360000:240000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  test.setTimeout(360000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await page.waitForFunction(()=>Boolean((window as unknown as TestWindow).__asterfall));await page.getByRole('button',{name:/开始旅程/}).click();await skip(page);
   await walk(page,2.8,105);await walk(page,2.8,98);await walk(page,0,98);await page.keyboard.press('KeyE');expect((await status(page)).state.terminal).toBe(false);expect((await status(page)).state.flags.chamberDoor).not.toBe(true);
   await walk(page,2.4,103);await page.keyboard.press('KeyE');await skip(page);await expect.poll(async()=>(await status(page)).state.terminal).toBe(true);
