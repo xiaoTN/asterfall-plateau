@@ -71,6 +71,11 @@ function setupOverworld(position: Vec3) {
 }
 
 describe('PlayerController actual-world traversal', () => {
+  it.each([1 / 60, 0.05])('walks down the tower approach at %s second steps', dt => {
+    const { player, input, run } = setupOverworld([8.975, 0, 19.4726]);
+    input.press('KeyW'); run(2, dt);
+    expect(player.position.z).toBeLessThan(14);
+  });
   it('exits the open chamber and climbs the tutorial ledge', () => {
     const { player, input, run } = setupOverworld([0, 0, 105]);
     input.press('KeyW', 'Space');
