@@ -48,6 +48,13 @@ function rawHeight(x: number, z: number): number {
     const inner = anchorRadius[key];
     y = THREE.MathUtils.lerp(y, elevation, 1 - smooth(inner, inner + 10, d));
   }
+  // A gentle footpath reaches the cabin's southern doorway. Blending two flat
+  // landmark shelves alone created a steep ring across the marked approach.
+  // Bake this ramp into the same heightfield used by visuals and collision.
+  const rampX = -14, rampZ = -11;
+  const rampT = clamp(((x + 26) * rampX + (z + 30) * rampZ) / (rampX * rampX + rampZ * rampZ), 0, 1);
+  const rampDistance = Math.hypot(x - (-26 + rampX * rampT), z - (-30 + rampZ * rampT));
+  if (rampDistance < 5) y = THREE.MathUtils.lerp(y, 10.5 + 10.5 * rampT, 1 - smooth(1.8, 5, rampDistance));
   // A genuinely level room and short corridor; the only obstacle is the tutorial ledge.
   const roomDistance = Math.max(Math.abs(x) - 9, Math.abs(z - 104) - 14, 0);
   if (Math.abs(x) < 17 && z > 82 && z < 126) {
@@ -122,7 +129,7 @@ export function outsideStructures(x: number, z: number, margin = 0): boolean {
 const paths: readonly [number, number, number, number][] = [
   [0, 88, 9, 64], [9, 64, 4, 18], [0, -16, 0, -60],
   [-16, 5, -55, 26], [15, 8, 55, 32], [14, -12, 58, -54],
-  [-14, -13, -57, -61], [-29, -33, -40, -45],
+  [-14, -13, -57, -61], [-26, -30, -40, -41],
 ];
 function segmentDistance(x: number, z: number, segment: readonly [number, number, number, number]): number {
   const [ax, az, bx, bz] = segment;

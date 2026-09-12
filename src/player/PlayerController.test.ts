@@ -108,6 +108,19 @@ describe('PlayerController actual-world traversal', () => {
     expect(player.grounded).toBe(true);
     expect(player.position.x).toBeGreaterThan(-20);
   });
+
+  it('can walk the marked snow-cabin approach without climbing a terrain seam', () => {
+    const { player, input, run } = setupOverworld([-26, 0, -30]);
+    for (let n = 0; n < 1000 && player.position.distanceTo(new THREE.Vector3(-40, 21, -41)) > 0.3; n++) {
+      input.clear();
+      if (player.position.x > -39.9) input.press('KeyA');
+      if (player.position.z > -40.9) input.press('KeyW');
+      run(1 / 60);
+    }
+    expect(player.position.x).toBeLessThan(-39.5);
+    expect(player.position.z).toBeLessThan(-40.5);
+    expect(player.position.y).toBeGreaterThan(20.5);
+  });
 });
 
 describe('PlayerController locomotion and collisions', () => {
