@@ -699,7 +699,7 @@ export class Overworld implements WorldView {
     const startZ = RIVER.minZ + 6, length = RIVER.maxZ - startZ;
     const reachGeometry = new THREE.PlaneGeometry(width, length, 4, 18).rotateX(-Math.PI / 2)
       .translate(x, RIVER.level, (startZ + RIVER.maxZ) / 2);
-    reachGeometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
+    (reachGeometry.getAttribute('position') as THREE.BufferAttribute).setUsage(THREE.DynamicDrawUsage);
     const reach = new THREE.Mesh(reachGeometry, this.flowingWater());
     reach.name = 'Rillstep narrow river';
     reach.renderOrder = 1;

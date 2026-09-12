@@ -1,2 +1,6 @@
 import { defineConfig } from 'vite';
-export default defineConfig({ base: './', build: { target: 'es2022', chunkSizeWarningLimit: 750 } });
+export default defineConfig(({ mode }) => ({
+  base: './',
+  server: mode === 'test' ? { hmr: false, watch: null } : {},
+  build: { target: 'es2022', rollupOptions: { output: { manualChunks: { three: ['three'] } } } },
+}));
