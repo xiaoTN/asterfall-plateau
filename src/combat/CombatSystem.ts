@@ -694,7 +694,12 @@ export class CombatSystem {
       this.hitTarget(target, damage, position);
     }
     for (const item of [...this.ctx.world.interactables]) if (item.position.distanceTo(position) <= radius + 1) {
-      if (item.kind === 'tree' || item.kind === 'pot') this.hitProp(item, Math.max(1, damage / 6));
+      if (item.kind === 'tree' || item.kind === 'pot') {
+        const key = source ? `${source.id}:interaction:${item.id}` : '';
+        if (source && this.ctx.elapsed < (this.contactHits.get(key) ?? -Infinity)) continue;
+        if (source) this.contactHits.set(key, this.ctx.elapsed + 0.45);
+        this.hitProp(item, Math.max(1, damage / 6));
+      }
     }
     if (explosive) for (const projectile of this.projectiles.projectiles) if (projectile.active && projectile.position.distanceTo(position) < radius && !this.fire.inWater(projectile.position) && (!projectile.item || ITEMS[projectile.item.id]?.flammable)) projectile.burning = true;
   }
