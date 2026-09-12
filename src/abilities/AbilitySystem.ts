@@ -440,10 +440,9 @@ export class AbilitySystem {
     body.velocity.copy(target.position).sub(this.old).divideScalar(Math.max(dt, 0.001)).clampLength(0, speed);
     if (body.velocity.length() > 1.3) {
       this.tryMetalImpact(target, body);
-      if (this.clock - body.lastHit > 0.45) {
-        body.lastHit = this.clock;
-        this.damageArea(target.position, Math.max(1, body.half.x + 0.65), Math.min(24, 5 + body.velocity.length() * (data.weight ?? 1.5)), target);
-      }
+      // Check contact every step. Combat throttles actual contacts per source/target;
+      // throttling empty space here could miss the entire time a cube crosses an enemy.
+      this.damageArea(target.position, Math.max(1, body.half.x + 0.65), Math.min(24, 5 + body.velocity.length() * (data.weight ?? 1.5)), target);
     }
     this.b.copy(target.position).sub(this.eye);
     this.heldBeam.visible = true;
