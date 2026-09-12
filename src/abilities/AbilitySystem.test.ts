@@ -224,6 +224,12 @@ describe('stasis timing, traversal and distinct impacts', () => {
 });
 
 describe('ice surface validation and ascending traversal', () => {
+  it('raises a swimmer safely when a pillar forms directly underneath', () => {
+    const h = harness('ice'); h.move([0, -0.8, -8]); h.aim([0, 0.08, -8]); h.press();
+    expect(h.columns()).toHaveLength(1);
+    expect(h.actor.position.y).toBeGreaterThan(h.columns()[0]!.box.max.y);
+    expect(h.actor.velocity.y).toBe(0);
+  });
   it('creates two climbable bridge columns and requires using them before reaching the bank', () => {
     const h = harness('ice');
     h.move([0, 0, -2]); h.aim([0, 0.08, -7.4]); h.press(); h.tick(25);

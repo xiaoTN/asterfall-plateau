@@ -88,6 +88,15 @@ describe('CombatSystem', () => {
     expect(f.combat.enemies[0].hp).toBe(f.combat.enemies[0].maxHp);
   });
 
+  it.each(['equipment change', 'death'])('cancels an active wind-up on %s', event => {
+    const f = fixture(); const sword = f.equip('sword'); const enemy = f.combat.enemies[0]; enemy.frozen = 10;
+    f.input.push('Mouse0'); f.step(8); f.input.lift('Mouse0'); f.step();
+    if (event === 'death') f.state.player.hp = 0; else f.equip('axe');
+    f.step(40);
+    expect(enemy.hp).toBe(enemy.maxHp); expect(sword.durability).toBe(30);
+    expect(f.ctx.actor.model.userData.attacking).toBe(false);
+  });
+
   it('persists deaths and loot across reload, but permits explicit enemy reset', () => {
     const f = fixture();
     f.combat.hitArea(new THREE.Vector3(0, 0, -2), 3, 100);
