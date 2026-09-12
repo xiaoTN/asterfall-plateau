@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 type TestWindow=Window&{__asterfall:any};
 async function status(page:Page){return page.evaluate(()=>{const g=(window as unknown as TestWindow).__asterfall;return {position:g.player.position.toArray() as number[],yaw:g.player.orbitYaw as number,state:g.state,panel:g.panel,cinema:Boolean(g.cinema)};});}
-async function skip(page:Page){await page.keyboard.press('Enter');await page.waitForFunction(()=>!(window as unknown as TestWindow).__asterfall.cinema);}
+async function skip(page:Page){await page.waitForFunction(()=>Boolean((window as unknown as TestWindow).__asterfall.cinema));await page.keyboard.press('Enter');await page.waitForFunction(()=>!(window as unknown as TestWindow).__asterfall.cinema);}
 async function walk(page:Page,x:number,z:number,climb=false){
   const held=new Set<string>();if(climb){await page.keyboard.down('Space');held.add('Space');}
   try{for(let n=0;n<400;n++){const s=await status(page);if(s.cinema)return;if(s.panel!=='none')throw new Error(`Walking interrupted: ${s.panel} ${s.state.quest}`);const dx=x-s.position[0]!,dz=z-s.position[2]!;if(Math.hypot(dx,dz)<.7)return;
@@ -16,7 +16,7 @@ test('keyboard-only awakening, sealed door, panorama, elder, tower and reload',a
   await walk(page,2.8,105);await walk(page,2.8,98);await walk(page,0,98);await page.keyboard.press('KeyE');expect((await status(page)).state.terminal).toBe(false);expect((await status(page)).state.flags.chamberDoor).not.toBe(true);
   await walk(page,2.4,103);await page.keyboard.press('KeyE');await skip(page);await expect.poll(async()=>(await status(page)).state.terminal).toBe(true);
   await walk(page,0,98);await page.keyboard.press('KeyE');await expect.poll(async()=>(await status(page)).state.flags.chamberDoor).toBe(true);
-  await walk(page,0,93);await walk(page,0,87,true);await walk(page,0,82);await page.keyboard.press('KeyE');await skip(page);await expect.poll(async()=>(await status(page)).state.quest).toBe('MEET_ELDER');
+  await walk(page,0,93);await walk(page,0,87,true);await walk(page,0,82);await skip(page);await expect.poll(async()=>(await status(page)).state.quest).toBe('MEET_ELDER');
   await walk(page,11.4,64.8);
   for(let n=0;n<4&&(await status(page)).panel==='none';n++){await page.keyboard.press('KeyE');await page.waitForTimeout(200);}
   await expect.poll(async()=>(await status(page)).panel).toBe('dialogue');await page.getByRole('button',{name:'我该去哪里？'}).click();await page.getByRole('button',{name:'我去唤醒它'}).click();
