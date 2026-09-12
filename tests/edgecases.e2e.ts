@@ -70,10 +70,12 @@ test('blood moon waits through pause and trials, clears bombs and preserves perm
     g.state.flags['opened:chamber-shirt'] = true; g.state.flags.bloodMoonPending = true;
     g.state.abilities = ['bomb']; g.state.selectedAbility = 'bomb'; g.changeRegion('bomb');
   });
-  await page.keyboard.press('KeyF'); await page.waitForTimeout(150);
-  expect(await page.evaluate(() => (window as any).__asterfall.abilities.activeBomb)).toBe(true);
+  await page.keyboard.press('KeyF');
+  await expect.poll(() => page.evaluate(() => (window as any).__asterfall.abilities.activeBomb)).toBe(true);
   expect(await page.evaluate(() => (window as any).__asterfall.state.bloodMoonCount)).toBe(0);
-  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => (window as any).__asterfall.panel)).toBe('pause');
+  await page.waitForTimeout(200);
   expect(await page.evaluate(() => (window as any).__asterfall.state.bloodMoonCount)).toBe(0);
   await page.evaluate(() => { const g = (window as any).__asterfall; g.changeRegion('overworld', [0, 20.1, 82]); });
   await page.waitForFunction(() => (window as any).__asterfall.state.bloodMoonCount === 1);

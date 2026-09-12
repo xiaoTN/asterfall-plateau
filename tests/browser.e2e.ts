@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 type TestWindow = Window & { __asterfall: any };
 const game = (page:Page) => page.evaluate(()=>{const g=(window as unknown as TestWindow).__asterfall;return {state:g.state,panel:g.panel,position:g.player.position.toArray()};});
-async function fresh(page:Page){await page.goto('/');await page.waitForFunction(()=>Boolean((window as unknown as TestWindow).__asterfall));await page.evaluate(()=>localStorage.clear());await page.reload();await page.waitForFunction(()=>Boolean((window as unknown as TestWindow).__asterfall));await page.getByRole('button',{name:/开始游戏|开始旅程|踏上旅程|新的旅程|开始探索/}).first().click();await page.keyboard.press('Enter');await expect.poll(async()=>(await game(page)).panel).toBe('none');await page.waitForFunction(()=>!(window as unknown as TestWindow).__asterfall.cinema);}
+// Playwright creates an isolated browser context for every test.
+async function fresh(page:Page){await page.goto('/');await page.waitForFunction(()=>Boolean((window as unknown as TestWindow).__asterfall));await page.getByRole('button',{name:/开始游戏|开始旅程|踏上旅程|新的旅程|开始探索/}).first().click();await page.keyboard.press('Enter');await expect.poll(async()=>(await game(page)).panel).toBe('none');await page.waitForFunction(()=>!(window as unknown as TestWindow).__asterfall.cinema);}
 
 test('title, playable chamber, menus, resize and error-free rendering',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
