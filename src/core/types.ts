@@ -20,7 +20,7 @@ export interface GameState {
   time: number; day: number; weather: Weather; weatherSeed: number; lastBloodMoon: number; bloodMoonCount: number;
   enemies: Record<string, EnemySave>; pins: { x: number; z: number }[]; settings: Settings; playSeconds: number;
 }
-export interface Collider { id: string; box: THREE.Box3; climbable: boolean; enabled: boolean; mesh?: THREE.Object3D; }
+export interface Collider { id: string; box: THREE.Box3; cameraBox?: THREE.Box3; climbable: boolean; enabled: boolean; mesh?: THREE.Object3D; }
 export interface Interactable { id: string; kind: 'terminal'|'door'|'exit'|'elder'|'tower'|'shrine'|'altar'|'glider'|'chest'|'pickup'|'tree'|'pot'|'campfire'|'ability'|'reward'|'return'; name: string; position: THREE.Vector3; radius: number; item?: string; ability?: AbilityId; mesh?: THREE.Object3D; data?: Record<string, string|number|boolean>; }
 export interface AbilityTarget { id: string; kind: 'metal'|'cracked'|'orb'|'rotor'|'water'|'gate'|'barrel'; position: THREE.Vector3; mesh: THREE.Object3D; collider?: Collider; stage?: number; solved?: boolean; frozen?: number; charge?: number; velocity?: THREE.Vector3; origin?: Vec3; resource?: 'log'|'apple'; attached?: boolean; }
 export interface WaterArea { minX: number; maxX: number; minZ: number; maxZ: number; level: number; depth: number; current?: Vec3; }

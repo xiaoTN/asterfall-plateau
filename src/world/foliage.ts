@@ -25,6 +25,7 @@ export class PlateauFoliage {
   private readonly bark = new THREE.MeshStandardMaterial({ color: '#665344', roughness: 1, flatShading: true });
   private readonly transform = new THREE.Object3D();
   private readonly hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+  private readonly crownPoint = new THREE.Vector3();
   private readonly wind = { value: 0 };
   private lodClock = 0;
   private bloodMoonCount?: number;
@@ -71,6 +72,7 @@ export class PlateauFoliage {
       const collider: Collider = {
         id, enabled: true, climbable: true, mesh: logical,
         box: new THREE.Box3(new THREE.Vector3(x - 0.32 * scale, y, z - 0.32 * scale), new THREE.Vector3(x + 0.32 * scale, y + 3.7 * scale, z + 0.32 * scale)),
+        cameraBox: new THREE.Box3(),
       };
       const pine = isColdTerrain(x, z);
       const interaction: Interactable = {
@@ -158,17 +160,28 @@ export class PlateauFoliage {
     return this.transform.matrix;
   }
 
+  private paintCrown(mesh: THREE.InstancedMesh, index: number, matrix: THREE.Matrix4, box: THREE.Box3): void {
+    mesh.setMatrixAt(index, matrix);
+    if (matrix === this.hidden) return;
+    // Bound actual transformed vertices, not a rotated geometry AABB or the physical trunk.
+    const positions = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) {
+      box.expandByPoint(this.crownPoint.fromBufferAttribute(positions, i).applyMatrix4(matrix));
+    }
+  }
+
   private paintTree(tree: TreeRecord): void {
     const { x, y, z } = tree.position;
     const s = tree.scale, i = tree.index;
+    const cameraBox = tree.collider.cameraBox!.makeEmpty();
     this.trunks.setMatrixAt(i, tree.felled ? this.hidden : this.matrix(x, y, z, s, s, s, tree.yaw));
     for (let k = 0; k < 3; k++) {
       const angle = tree.yaw + k * Math.PI * 2 / 3;
-      this.crowns.setMatrixAt(i * 3 + k, tree.felled || tree.pine ? this.hidden
-        : this.matrix(x + Math.cos(angle) * 1.05 * s, y + (3.7 + (k === 0 ? 0.7 : 0)) * s, z + Math.sin(angle) * 1.05 * s, 2.2 * s, 1.75 * s, 2.1 * s, angle));
+      this.paintCrown(this.crowns, i * 3 + k, tree.felled || tree.pine ? this.hidden
+        : this.matrix(x + Math.cos(angle) * 1.05 * s, y + (3.7 + (k === 0 ? 0.7 : 0)) * s, z + Math.sin(angle) * 1.05 * s, 2.2 * s, 1.75 * s, 2.1 * s, angle), cameraBox);
     }
-    for (let k = 0; k < 2; k++) this.snowCrowns.setMatrixAt(i * 2 + k, tree.felled || !tree.pine ? this.hidden
-      : this.matrix(x, y + (3.1 + k * 1.55) * s, z, (2.3 - k * 0.7) * s, (1.6 - k * 0.2) * s, (2.3 - k * 0.7) * s, tree.yaw));
+    for (let k = 0; k < 2; k++) this.paintCrown(this.snowCrowns, i * 2 + k, tree.felled || !tree.pine ? this.hidden
+      : this.matrix(x, y + (3.1 + k * 1.55) * s, z, (2.3 - k * 0.7) * s, (1.6 - k * 0.2) * s, (2.3 - k * 0.7) * s, tree.yaw), cameraBox);
     tree.collider.enabled = !tree.felled;
     tree.interaction.mesh!.visible = !tree.felled;
     tree.interaction.radius = tree.felled ? 0 : 2.8;
