@@ -1,6 +1,7 @@
 node_modules/
 dist/
 test-results/
+test-results-production/
 playwright-report/
 .artifacts/
 .qoder/
