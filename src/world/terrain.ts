@@ -24,6 +24,7 @@ export const LAKES: readonly LakeDefinition[] = [
   { x: 108, z: 8, rx: 7, rz: 7, level: RIVER.level, depth: 2.4, current: [0, 0, 0.35] },
   { x: 108, z: 42, rx: 12, rz: 12, level: CASCADE.minY, depth: 3.8, current: [0, 0, 0.45] },
 ];
+export const SNOW_PATH: readonly Vec3[] = [[-26, 10.5, -30], [-40, 21, -41], [-48, 21, -40], [-55, 24, -53], [-66, 27, -60]];
 const anchorHeight: Record<string, number> = {
   chamber: 22, outlook: 20, elder: 12, tower: 8, magnet: 11, bomb: 10,
   stasis: 14, ice: 27, temple: 12, camp1: 10, camp2: 12, camp3: 10, cabin: 21,
@@ -51,10 +52,15 @@ function rawHeight(x: number, z: number): number {
   // A gentle footpath reaches the cabin's southern doorway. Blending two flat
   // landmark shelves alone created a steep ring across the marked approach.
   // Bake this ramp into the same heightfield used by visuals and collision.
-  const rampX = -14, rampZ = -11;
-  const rampT = clamp(((x + 26) * rampX + (z + 30) * rampZ) / (rampX * rampX + rampZ * rampZ), 0, 1);
-  const rampDistance = Math.hypot(x - (-26 + rampX * rampT), z - (-30 + rampZ * rampT));
-  if (rampDistance < 5) y = THREE.MathUtils.lerp(y, 10.5 + 10.5 * rampT, 1 - smooth(1.8, 5, rampDistance));
+  let rampDistance = Infinity, rampHeight = y;
+  for (let i = 1; i < SNOW_PATH.length; i++) {
+    const a = SNOW_PATH[i - 1]!, b = SNOW_PATH[i]!;
+    const dx = b[0] - a[0], dz = b[2] - a[2];
+    const t = clamp(((x - a[0]) * dx + (z - a[2]) * dz) / (dx * dx + dz * dz), 0, 1);
+    const distance = Math.hypot(x - a[0] - dx * t, z - a[2] - dz * t);
+    if (distance < rampDistance) { rampDistance = distance; rampHeight = THREE.MathUtils.lerp(a[1], b[1], t); }
+  }
+  if (rampDistance < 5) y = THREE.MathUtils.lerp(y, rampHeight, 1 - smooth(1.8, 5, rampDistance));
   // A genuinely level room and short corridor; the only obstacle is the tutorial ledge.
   const roomDistance = Math.max(Math.abs(x) - 9, Math.abs(z - 104) - 14, 0);
   if (Math.abs(x) < 17 && z > 82 && z < 126) {
@@ -129,7 +135,7 @@ export function outsideStructures(x: number, z: number, margin = 0): boolean {
 const paths: readonly [number, number, number, number][] = [
   [0, 88, 9, 64], [9, 64, 4, 18], [0, -16, 0, -60],
   [-16, 5, -55, 26], [15, 8, 55, 32], [14, -12, 58, -54],
-  [-14, -13, -57, -61], [-26, -30, -40, -41],
+  [-14, -13, -57, -61], ...SNOW_PATH.slice(1).map((b, i): [number, number, number, number] => [SNOW_PATH[i]![0], SNOW_PATH[i]![2], b[0], b[2]]),
 ];
 function segmentDistance(x: number, z: number, segment: readonly [number, number, number, number]): number {
   const [ax, az, bx, bz] = segment;
