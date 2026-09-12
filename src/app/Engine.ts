@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CONFIG, LOCATIONS, ABILITIES } from '../config/game';
 import { ITEMS } from '../config/items';
 import { createState, SaveStore } from '../core/state';
+import { recoverSavedPosition } from '../core/recovery';
 import { advanceClock, applyBloodMoon } from '../core/clock';
 import { Input } from '../core/input';
 import { Effects } from '../core/effects';
@@ -68,10 +69,11 @@ export class Engine {
     this.combat?.dispose();this.abilities?.dispose();this.player?.dispose();if(this.ctx.world){this.scene.remove(this.ctx.world.root);this.ctx.world.dispose();}
     this.ctx.state=state;this.ctx.inCombat=false;this.ctx.timeScale=1;
     this.ctx.world=state.region==='overworld'?new Overworld(state):buildTrial(state.region,state);this.scene.add(this.ctx.world.root);
+    recoverSavedPosition(state,this.ctx.world);
     this.player=new PlayerController(this.ctx);this.ctx.actor=this.player;
     this.combat=new CombatSystem(this.ctx);this.abilities=new AbilitySystem(this.ctx,(p,r,d,source)=>this.combat.hitArea(p,r,d,!source,source));this.abilities.freezeEnemy=(p,r,t)=>Boolean(this.combat.freezeNearest(p,r,t));
     this.gameplay=new Gameplay(this.ctx,d=>this.showDialogue(d));
-    this.recoverPosition();this.input.clear();
+    this.input.clear();
   }
   start(continuing:boolean):void{
     void this.audio.start();const loaded=continuing?this.store.load():null;
@@ -81,16 +83,6 @@ export class Engine {
     this.rebuild(state);this.settings(state.settings);this.started=true;this.setPanel('none');
     if(!loaded){this.showCinema('第一束光','长夜沉入石缝。远方，有一颗星仍在等你。',4,()=>{this.ctx.state.quest='GET_TERMINAL';this.notify('WASD 移动 · 鼠标转动视角 · E 与发光物体交互');});}
     else this.notify('旅程已继续。星光记得你的足迹。','success');
-  }
-  private recoverPosition():void{
-    const {state,world}=this.ctx;let p:Vec3=[...state.player.position];
-    const wet=world.waters.some(w=>p[0]>=w.minX&&p[0]<=w.maxX&&p[2]>=w.minZ&&p[2]<=w.maxZ&&w.depth>1.3&&p[1]<w.level+.5);
-    if(wet||!p.every(Number.isFinite)||p[1]<-35||p[1]>200||Math.hypot(p[0],p[2])>170){p=state.region==='overworld'?[...state.safePosition]:[0,0,9];}
-    const h=world.heightAt(p[0],p[2]);if(p[1]<h)p[1]=h+.06;
-    const capsule=new THREE.Box3(new THREE.Vector3(p[0]-.3,p[1]+.1,p[2]-.3),new THREE.Vector3(p[0]+.3,p[1]+1.7,p[2]+.3));
-    const safeFallback=(candidate:Vec3):Vec3=>{const y=world.heightAt(candidate[0],candidate[2]);if(!Number.isFinite(y))return candidate;const adjusted=[candidate[0],Math.max(candidate[1],y+.05),candidate[2]] as Vec3;const box=new THREE.Box3(new THREE.Vector3(adjusted[0]-.3,adjusted[1]+.1,adjusted[2]-.3),new THREE.Vector3(adjusted[0]+.3,adjusted[1]+1.7,adjusted[2]+.3));if(world.colliders.some(c=>c.enabled&&c.box.intersectsBox(box)))return state.region==='overworld'?(state.terminal?[...state.safePosition]:[0,world.heightAt(0,105),105]):[0,0,9];return adjusted;};
-    if(world.colliders.some(c=>c.enabled&&c.box.intersectsBox(capsule))){p=safeFallback(state.region==='overworld'?(state.terminal?[...state.safePosition]:[0,world.heightAt(0,105),105]):[0,0,9]);}
-    this.player.teleport(p);state.player.movement='idle';
   }
   changeRegion(region:Region,position?:Vec3):void{
     this.abilities.dispose();this.combat.dispose();this.scene.remove(this.ctx.world.root);this.ctx.world.dispose();
