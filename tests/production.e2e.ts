@@ -7,7 +7,8 @@ test('production bundle renders, accepts controls, opens menus and excludes debu
   await page.goto('/'); await expect(page.getByRole('button', { name: /开始旅程/ })).toBeVisible();
   expect(await page.evaluate(() => '__asterfall' in window)).toBe(false);
   await page.screenshot({ path: '.artifacts/production-title.png' });
-  await page.getByRole('button', { name: /开始旅程/ }).click(); await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: /开始旅程/ }).click();
+  await page.getByRole('button', { name: /跳过演出/ }).click();
   await expect(page.getByText('沉睡的星盘', { exact: true })).toBeVisible();
   await page.keyboard.down('KeyA'); await page.waitForTimeout(500); await page.keyboard.up('KeyA');
   await page.keyboard.press('Tab'); await expect(page.getByRole('heading', { name: /行囊/ })).toBeVisible();
